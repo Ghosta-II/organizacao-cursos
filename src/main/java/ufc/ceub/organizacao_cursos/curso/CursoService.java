@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 
 import ufc.ceub.organizacao_cursos.exception.RecursoNaoEncontradoException;
 import ufc.ceub.organizacao_cursos.exception.RegraNegocioException;
+import ufc.ceub.organizacao_cursos.matricula.MatriculaRepository;
 import ufc.ceub.organizacao_cursos.professor.Professor;
 import ufc.ceub.organizacao_cursos.professor.ProfessorRepository;
 
@@ -17,10 +18,14 @@ public class CursoService {
 
     private final CursoRepository repository;
     private final ProfessorRepository professorRepository;
+    private final MatriculaRepository matriculaRepository;
 
-    public CursoService(CursoRepository repository, ProfessorRepository professorRepository) {
+    public CursoService(CursoRepository repository,
+                        ProfessorRepository professorRepository,
+                        MatriculaRepository matriculaRepository) {
         this.repository = repository;
         this.professorRepository = professorRepository;
+        this.matriculaRepository = matriculaRepository;
     }
 
     /**
@@ -63,10 +68,13 @@ public class CursoService {
 
     /**
      * Remove um curso pelo id.
+     * Não é permitido remover curso que possua matrículas.
      */
     public void remover(Long id) {
         Curso curso = obterOuFalhar(id);
-        // TODO: impedir remoção quando houver matrículas (será implementado na funcionalidade de Matrículas)
+        if (matriculaRepository.existsByCursoId(id)) {
+            throw new RegraNegocioException("Curso possui matrículas ativas");
+        }
         repository.delete(curso);
     }
 
