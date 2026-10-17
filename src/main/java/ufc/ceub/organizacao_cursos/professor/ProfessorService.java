@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
+import ufc.ceub.organizacao_cursos.curso.CursoRepository;
 import ufc.ceub.organizacao_cursos.exception.RecursoNaoEncontradoException;
 import ufc.ceub.organizacao_cursos.exception.RegraNegocioException;
 
@@ -14,9 +15,11 @@ import ufc.ceub.organizacao_cursos.exception.RegraNegocioException;
 public class ProfessorService {
 
     private final ProfessorRepository repository;
+    private final CursoRepository cursoRepository;
 
-    public ProfessorService(ProfessorRepository repository) {
+    public ProfessorService(ProfessorRepository repository, CursoRepository cursoRepository) {
         this.repository = repository;
+        this.cursoRepository = cursoRepository;
     }
 
     /**
@@ -60,10 +63,13 @@ public class ProfessorService {
 
     /**
      * Remove um professor pelo id.
+     * Não é permitido remover professor que possua cursos vinculados.
      */
     public void remover(Long id) {
         Professor professor = obterOuFalhar(id);
-        // TODO: impedir remoção quando houver cursos vinculados (será implementado na funcionalidade de Cursos)
+        if (cursoRepository.existsByProfessorId(id)) {
+            throw new RegraNegocioException("Professor possui cursos vinculados");
+        }
         repository.delete(professor);
     }
 
