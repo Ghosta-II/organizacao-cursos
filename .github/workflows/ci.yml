@@ -9,6 +9,12 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    environment: secrets
+    env:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+      DOCKERHUB_REPOSITORY: ${{ vars.DOCKERHUB_REPOSITORY || 'organizacao-cursios' }}
+      PUSH_ENABLED: ${{ vars.DOCKERHUB_PUSH_ENABLED || 'false' }}
 
     steps:
       - name: Baixar o código
@@ -23,3 +29,15 @@ jobs:
 
       - name: Compilar e rodar os testes
         run: ./mvnw -B verify
+      - name: Build da imagem
+        run: docker build --tag "organizacao-cursios:${GITHUB_SHA}" .
+      - name: Push no Docker Hub
+        run: |
+                set -euo pipefail
+                : "${DOCKERHUB_USERNAME:?Configure DOCKERHUB_USERNAME}"
+                : "${DOCKERHUB_TOKEN:?Configure DOCKERHUB_TOKEN}"
+                IMAGE="${DOCKERHUB_USERNAME}:${GITHUB_SHA}"
+                trap 'docker logout >/dev/null 2>&1 || true' EXIT
+                printf '%s' "$DOCKERHUB_TOKEN" | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
+                docker tag "organizacao-cursios:${GITHUB_SHA}" "$IMAGE"
+                docker push "$IMAGE"
