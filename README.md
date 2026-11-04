@@ -14,6 +14,31 @@ No Windows:
 .\mvnw.cmd spring-boot:run
 ```
 
+## Como rodar com Docker
+
+```bash
+docker build -t organizacao-cursos .
+docker run --rm -p 8080:8080 organizacao-cursos
+```
+
+A imagem publicada no Docker Hub pode ser usada direto:
+
+```bash
+docker run --rm -p 8080:8080 <usuario-dockerhub>/organizacao-cursos:latest
+```
+
+## Publicação no Docker Hub (CI)
+
+O workflow `.github/workflows/ci.yml` compila, roda os testes e gera a imagem. Em push para `main` ou `develop` (ou execução manual em Actions → CI → Run workflow) a imagem é publicada como `<usuario>/<repositorio>:<sha do commit>`; em `main` também recebe a tag `latest`. Em pull request a imagem só é gerada, sem publicar.
+
+Configuração necessária em Settings → Secrets and variables → Actions:
+
+| Tipo | Nome | Valor |
+|------|------|-------|
+| Secret | `DOCKERHUB_USERNAME` | usuário do Docker Hub |
+| Secret | `DOCKERHUB_TOKEN` | Personal Access Token do Docker Hub com permissão **Read & Write** |
+| Variable | `DOCKERHUB_REPOSITORY` | nome do repositório no Docker Hub (padrão: `organizacao-cursos`) |
+
 ## Documentação da API
 
 Com a aplicação rodando, acesse: http://localhost:8080/swagger-ui.html

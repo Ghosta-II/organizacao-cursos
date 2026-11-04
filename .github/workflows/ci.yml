@@ -5,16 +5,16 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    environment: secrets
     env:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-      DOCKERHUB_REPOSITORY: ${{ vars.DOCKERHUB_REPOSITORY || 'organizacao-cursios' }}
-      PUSH_ENABLED: ${{ vars.DOCKERHUB_PUSH_ENABLED || 'false' }}
+      DOCKERHUB_REPOSITORY: ${{ vars.DOCKERHUB_REPOSITORY || 'organizacao-cursos' }}
+      IMAGE_LOCAL: organizacao-cursos:${{ github.sha }}
 
     steps:
       - name: Baixar o código
@@ -29,15 +29,25 @@ jobs:
 
       - name: Compilar e rodar os testes
         run: ./mvnw -B verify
+
       - name: Build da imagem
-        run: docker build --tag "organizacao-cursios:${GITHUB_SHA}" .
+        run: docker build --tag "$IMAGE_LOCAL" .
+
+      # Só publica em push (main/develop) ou execução manual; em pull request apenas valida o build
       - name: Push no Docker Hub
+        if: github.event_name != 'pull_request'
         run: |
-                set -euo pipefail
-                : "${DOCKERHUB_USERNAME:?Configure DOCKERHUB_USERNAME}"
-                : "${DOCKERHUB_TOKEN:?Configure DOCKERHUB_TOKEN}"
-                IMAGE="${DOCKERHUB_USERNAME}:${GITHUB_SHA}"
-                trap 'docker logout >/dev/null 2>&1 || true' EXIT
-                printf '%s' "$DOCKERHUB_TOKEN" | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
-                docker tag "organizacao-cursios:${GITHUB_SHA}" "$IMAGE"
-                docker push "$IMAGE"
+          set -euo pipefail
+          : "${DOCKERHUB_USERNAME:?Configure o secret DOCKERHUB_USERNAME}"
+          : "${DOCKERHUB_TOKEN:?Configure o secret DOCKERHUB_TOKEN}"
+          IMAGE="${DOCKERHUB_USERNAME}/${DOCKERHUB_REPOSITORY}"
+          trap 'docker logout >/dev/null 2>&1 || true' EXIT
+          printf '%s' "$DOCKERHUB_TOKEN" | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
+
+          docker tag "$IMAGE_LOCAL" "${IMAGE}:${GITHUB_SHA}"
+          docker push "${IMAGE}:${GITHUB_SHA}"
+
+          if [ "$GITHUB_REF" = "refs/heads/main" ]; then
+            docker tag "$IMAGE_LOCAL" "${IMAGE}:latest"
+            docker push "${IMAGE}:latest"
+          fi
